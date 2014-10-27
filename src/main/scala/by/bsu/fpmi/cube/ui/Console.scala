@@ -21,23 +21,27 @@ object Console {
         case None =>
           prY match {
             case None =>
-              print("\t")
+              print("\t\t")
             case Some(y) =>
               print("\n")
-              print(y.entry.data.head._2)
+              val label = y.entry.data.head._2
+              print(label)
+              if (label.length < 8) print("\t")
               print("\t")
           }
         case Some(x) =>
           prY match {
             case None =>
-              print(x.entry.data.head._2)
+              val label = x.entry.data.head._2
+              print(label)
+              if (label.length < 8) print("\t")
               print("\t")
             case Some(y) =>
               val res = result.find { case (dims, entry) =>
                 dims.exists(_.entry.data.last._2 == y.entry.data.last._2) && dims.exists(_.entry.data.last._2 == x.entry.data.last._2)
               }
               print(res.fold(""){case (_, entry) => entry.entry.data.head._2})
-              print("\t")
+              print("\t\t")
           }
       }
     }
