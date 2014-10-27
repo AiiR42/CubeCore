@@ -1,9 +1,13 @@
 package by.bsu.fpmi.cube.ui
 
+import java.io.PrintWriter
+
 import by.bsu.fpmi.cube.core.models.data.{Entry, FactEntry, DimensionEntry}
 import by.bsu.fpmi.cube.core.models.filters.DiscreteFilter
 import by.bsu.fpmi.cube.core.models.types.DimensionType
 import by.bsu.fpmi.cube.core.services.CubeService
+
+import scala.xml.XML
 
 object Console {
 
@@ -58,11 +62,53 @@ object Console {
     new DimensionEntry(DimensionType(typeName), new Entry(Map("name" -> value)))
   }
 
-  def main(args: Array[String]) {
+  private def save(filename: String, xValues: Seq[DimensionEntry], yValues: Seq[DimensionEntry], fixValue: DimensionEntry) = {
+    val xml = <save>
+      <filters>
+        <xfilter type={xValues.head.tableType.name}>
+          <values>
+            {xValues.map(x => <value>{x.entry.data.last._2}</value>)}
+          </values>
+        </xfilter>
+        <yfilter type={yValues.head.tableType.name}>
+          <values>
+            {yValues.map(x => <value>{x.entry.data.last._2}</value>)}
+          </values>
+        </yfilter>
+        <fixfilter type={fixValue.tableType.name}>
+          <value>{fixValue.entry.data.last._2}</value>
+        </fixfilter>
+      </filters>
+    </save>
 
+    val out = new PrintWriter(filename, "UTF-8")
+    out.write(xml.toString())
+    out.close()
+  }
+
+  private def load(filename: String): (scala.collection.immutable.Seq[DimensionEntry], scala.collection.immutable.Seq[DimensionEntry], DimensionEntry) = {
+    val content = XML.loadFile(filename)
+
+    val yType = (content \ "filters" \ "yfilter" \ "@type").text.trim
+    val xType = (content \ "filters" \ "xfilter" \ "@type").text.trim
+    val fixType = (content \ "filters" \ "fixfilter" \ "@type").text.trim
+
+    val yFixValues = (content \ "filters" \ "yfilter" \ "values" \ "value").map(_.text.trim).toList
+    val xFixValues = (content \ "filters" \ "xfilter" \ "values" \ "value").map(_.text.trim).toList
+    val fixedValue = (content \ "filters" \ "fixfilter" \ "value").text.trim
+
+    val yValues = createEntries(yType, yFixValues)
+    val xValues = createEntries(xType, xFixValues)
+    val fixValue = createEntry(fixType, fixedValue)
+
+    (xValues, yValues, fixValue)
+  }
+
+  def main(args: Array[String]) {
 //    System.setProperty("sqlite4java.debug", "true")
 
 //    com.almworks.sqlite4java.SQLite.main(Seq("-d").toArray)
+    java.util.logging.Logger.getLogger("com.almworks.sqlite4java").setLevel(java.util.logging.Level.OFF)
 
     var yValues = createEntries("shops", List("Shop1", "Shop2"))
 
@@ -98,6 +144,13 @@ object Console {
                   fixValue = createEntry(params.head, params.tail.head)
               }
 
+            case "save" =>
+              save(subcommand, xValues, yValues, fixValue)
+            case "load" =>
+              val savedInfo = load(subcommand)
+              xValues = savedInfo._1
+              yValues = savedInfo._2
+              fixValue = savedInfo._3
             case _ =>
           }
 
