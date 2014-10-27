@@ -2,25 +2,21 @@ package by.bsu.fpmi.cube.core.sources
 
 import java.io.File
 
-import by.bsu.fpmi.cube.core.models.data.{Entry, FactEntry, DimensionEntry, TableEntry}
+import by.bsu.fpmi.cube.core.models.data.{Entry, FactEntry, DimensionEntry}
 import by.bsu.fpmi.cube.core.models.filters.DiscreteFilter
-import by.bsu.fpmi.cube.core.models.types.{FactType, DimensionType, TableType}
+import by.bsu.fpmi.cube.core.models.types.{FactType, DimensionType}
 import com.almworks.sqlite4java.SQLiteConnection
 
 object SqlSource {
 
-  lazy val configuration = new Configuration("meta.xml")
+  lazy val configuration = new Configuration("/Users/andrew/University/Projects/CubeBase/meta.xml")
 
 //  def readAll[T <: TableType](tableType: T): Seq[TableEntry[T]] = {
 //    val tableName = tableType.name
-//
-//
-//
 //  }
 
-  def readFacts(filters: Seq[(DimensionType, DiscreteFilter)]): Map[Seq[DimensionEntry], FactEntry] = {
+  def readFacts(filters: Seq[(DimensionType, DiscreteFilter[DimensionType, DimensionEntry])]): Map[Seq[DimensionEntry], FactEntry] = {
     // select * from *facts_table_name* left join *dim1* on *dim1*.*dim1key* = *facts_table_name*.*fk* ... where
-    //
 
     val factsTableName = configuration.factsTableName
     val factsDataFields = configuration.factsDataFields.map(s => s"$factsTableName.$s")
@@ -41,14 +37,14 @@ object SqlSource {
 
     val whereConditions = filters.map { case (dimensionType, filter) =>
       val tableName = dimensionType.name
-      val dimensionKey = configuration.dimensionKey(tableName)
-      val setString = filter.fixedValues.map { _.toString }.mkString(", ")
+      val dimensionKey = filter.fixedValues.head.entry.data.head._1  //configuration.dimensionKey(tableName)
+      val setString = filter.fixedValues.map { dEntry => "\"" + dEntry.entry.data.head._2 + "\"" }.mkString(", ")
       if (setString.isEmpty) {
         ""
       } else {
         s"$tableName.$dimensionKey in ($setString)"
       }
-    }.mkString(" or ")
+    }.mkString(" and ")
 
     val whereStatement = if (whereConditions.isEmpty) {
       ""
@@ -56,19 +52,19 @@ object SqlSource {
       s"where $whereConditions"
     }
 
-    val statement = s"select $selectFieldsString $joins $whereStatement;"
+    val statement = s"select $selectFieldsString from $factsTableName $joins $whereStatement;"
 
     val factType = FactType(factsTableName)
 
     var result = scala.collection.mutable.Map[Seq[DimensionEntry], FactEntry]()
 
-    val db = new SQLiteConnection(new File("/tmp/database"))
+    val db = new SQLiteConnection(new File("/Users/andrew/University/Projects/CubeBase/apples"))
     db.open(true)
     val st = db.prepare(statement)
     while (st.step()) {
       val allValues = selectFields.zipWithIndex.map { case (field, index) =>
         val value = st.columnValue(index).toString
-        field.split(".") -> value
+        field.split("\\.") -> value
       }.groupBy(_._1.head)
 
       val allValuesByTables = allValues.map { case (tableName, seq) =>
@@ -78,6 +74,8 @@ object SqlSource {
         val valuesMap = Map(values: _*)
         tableName -> valuesMap
       }
+
+//      println(allValuesByTables)
 
       val dimensionEntries = allValuesByTables.filter { case (tableName, _) =>
         tableName != factsTableName

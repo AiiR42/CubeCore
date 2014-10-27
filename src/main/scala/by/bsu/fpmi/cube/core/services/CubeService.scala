@@ -7,13 +7,18 @@ import by.bsu.fpmi.cube.core.sources.SqlSource
 
 object CubeService {
 
-  def getData(filters: Seq[(DimensionType, DiscreteFilter)]): Map[Seq[DimensionEntry], FactEntry] = {
+  def getData(filters: Seq[(DimensionType, DiscreteFilter[DimensionType, DimensionEntry])]): Map[Seq[DimensionEntry], FactEntry] = {
     SqlSource.readFacts(filters)
   }
 
   def getDimensionValues(tableType: DimensionType): Seq[DimensionEntry] = ???
 
-  def getDimensionTypes: Seq[DimensionType] = ???
-  def getFactType: FactType = ???
+  def getDimensionTypes: Seq[DimensionType] = {
+    SqlSource.configuration.dimensions.map(DimensionType)
+  }
+
+  def getFactType: FactType = {
+    FactType(SqlSource.configuration.factsTableName)
+  }
 
 }
