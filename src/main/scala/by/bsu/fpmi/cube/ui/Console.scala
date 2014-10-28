@@ -2,7 +2,7 @@ package by.bsu.fpmi.cube.ui
 
 import java.io.PrintWriter
 
-import by.bsu.fpmi.cube.core.models.data.{Entry, FactEntry, DimensionEntry}
+import by.bsu.fpmi.cube.core.models.data.{TableEntry, Entry, FactEntry, DimensionEntry}
 import by.bsu.fpmi.cube.core.models.filters.DiscreteFilter
 import by.bsu.fpmi.cube.core.models.types.DimensionType
 import by.bsu.fpmi.cube.core.services.CubeService
@@ -10,6 +10,9 @@ import by.bsu.fpmi.cube.core.services.CubeService
 import scala.xml.XML
 
 object Console {
+
+  private def dimensionValue(e: TableEntry[_]) = e.entry.data.last._2
+  private def factValue(e: TableEntry[_]) = e.entry.data.head._2
 
   private def printTable(xValues: Seq[DimensionEntry], yValues: Seq[DimensionEntry], result: Map[Seq[DimensionEntry], FactEntry]): Unit = {
     val printableXValues = Seq(None) ++ xValues.map(Some(_))
@@ -28,7 +31,7 @@ object Console {
               print("\t\t")
             case Some(y) =>
               print("\n")
-              val label = y.entry.data.head._2
+              val label = dimensionValue(y)
               print(label)
               if (label.length < 8) print("\t")
               print("\t")
@@ -36,15 +39,15 @@ object Console {
         case Some(x) =>
           prY match {
             case None =>
-              val label = x.entry.data.head._2
+              val label = dimensionValue(x)
               print(label)
               if (label.length < 8) print("\t")
               print("\t")
             case Some(y) =>
               val res = result.find { case (dims, entry) =>
-                dims.exists(_.entry.data.last._2 == y.entry.data.last._2) && dims.exists(_.entry.data.last._2 == x.entry.data.last._2)
+                dims.exists(dimensionValue(_) == dimensionValue(y)) && dims.exists(dimensionValue(_) == dimensionValue(x))
               }
-              print(res.fold(""){case (_, entry) => entry.entry.data.head._2})
+              print(res.fold(""){case (_, entry) => factValue(entry) })
               print("\t\t")
           }
       }
@@ -67,16 +70,16 @@ object Console {
       <filters>
         <xfilter type={xValues.head.tableType.name}>
           <values>
-            {xValues.map(x => <value>{x.entry.data.last._2}</value>)}
+            {xValues.map(x => <value>{dimensionValue(x)}</value>)}
           </values>
         </xfilter>
         <yfilter type={yValues.head.tableType.name}>
           <values>
-            {yValues.map(x => <value>{x.entry.data.last._2}</value>)}
+            {yValues.map(x => <value>{dimensionValue(x)}</value>)}
           </values>
         </yfilter>
         <fixfilter type={fixValue.tableType.name}>
-          <value>{fixValue.entry.data.last._2}</value>
+          <value>{dimensionValue(fixValue)}</value>
         </fixfilter>
       </filters>
     </save>
@@ -104,6 +107,15 @@ object Console {
     (xValues, yValues, fixValue)
   }
 
+  private def printError(message: String) = {
+    println("Error: " + message)
+  }
+
+  private def printCommandError(command: String) = {
+    printError(s"""Command "$command" is incorrect.""")
+  }
+
+
   def main(args: Array[String]) {
 //    System.setProperty("sqlite4java.debug", "true")
 
@@ -128,7 +140,11 @@ object Console {
 //
 //    println(result)
 
+    var prevLine = ""
+    print(">> ")
+
     for (line <- io.Source.stdin.getLines()) {
+      prevLine = line
       line.split(" ").toList match {
         case command :: subcommand :: params =>
 
@@ -142,6 +158,8 @@ object Console {
                   xValues = createEntries(params.head, params.tail)
                 case "fixValue" =>
                   fixValue = createEntry(params.head, params.tail.head)
+                case _ =>
+                  printCommandError(line)
               }
 
             case "save" =>
@@ -165,10 +183,17 @@ object Console {
               )
               val result = CubeService.getData(filters)
               printTable(xValues, yValues, result)
+            case _ =>
+              printCommandError(line)
           }
 
+        case "" :: _ =>
+
         case _ =>
+          printCommandError(line)
       }
+
+      print(">> ")
     }
   }
 
