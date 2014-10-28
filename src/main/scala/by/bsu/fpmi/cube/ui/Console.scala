@@ -55,6 +55,15 @@ object Console {
     println()
   }
 
+  private def printFilter(xValues: Seq[DimensionEntry], yValues: Seq[DimensionEntry], fixValue: DimensionEntry): Unit = {
+    println(s"""     X axis type: ${yValues.head.tableType.name}""")
+    println(s"""        X values: ${yValues.map(dimensionValue).mkString(", ")}""")
+    println(s"""     Y axis type: ${xValues.head.tableType.name}""")
+    println(s"""        Y values: ${xValues.map(dimensionValue).mkString(", ")}""")
+    println(s"""Fixed value type: ${fixValue.tableType.name}""")
+    println(s"""     Fixed value: ${dimensionValue(fixValue)}""")
+  }
+
   private def createEntries(typeName: String, values: List[String]) = {
     values.map { value =>
       new DimensionEntry(DimensionType(typeName), new Entry(Map("name" -> value)))
@@ -183,11 +192,13 @@ object Console {
               )
               val result = CubeService.getData(filters)
               printTable(xValues, yValues, result)
+            case "showFilter" =>
+              printFilter(xValues, yValues, fixValue)
+            case "" =>
+              // no error message
             case _ =>
               printCommandError(line)
           }
-
-        case "" :: _ =>
 
         case _ =>
           printCommandError(line)
