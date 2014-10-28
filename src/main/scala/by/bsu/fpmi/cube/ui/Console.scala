@@ -195,7 +195,12 @@ object Console {
                   fixValue.tableType -> DiscreteFilter.singleValue[DimensionType, DimensionEntry](fixValue)
                 )
                 val result = CubeService.getData(filters)
-                printTable(xValues, yValues, result)
+                if (result.nonEmpty) {
+                  printTable(xValues, yValues, result)
+                } else {
+                  printError("Wrong filters value.")
+                  printFilter(xValues, yValues, fixValue)
+                }
               } else {
                 printError("Wrong filters format.")
                 printFilter(xValues, yValues, fixValue)
