@@ -56,10 +56,10 @@ object Console {
   }
 
   private def printFilter(xValues: Seq[DimensionEntry], yValues: Seq[DimensionEntry], fixValue: DimensionEntry): Unit = {
-    println(s"""     X axis type: ${yValues.head.tableType.name}""")
-    println(s"""        X values: ${yValues.map(dimensionValue).mkString(", ")}""")
-    println(s"""     Y axis type: ${xValues.head.tableType.name}""")
-    println(s"""        Y values: ${xValues.map(dimensionValue).mkString(", ")}""")
+    println(s"""     X axis type: ${xValues.head.tableType.name}""")
+    println(s"""        X values: ${xValues.map(dimensionValue).mkString(", ")}""")
+    println(s"""     Y axis type: ${yValues.head.tableType.name}""")
+    println(s"""        Y values: ${yValues.map(dimensionValue).mkString(", ")}""")
     println(s"""Fixed value type: ${fixValue.tableType.name}""")
     println(s"""     Fixed value: ${dimensionValue(fixValue)}""")
   }
@@ -124,6 +124,9 @@ object Console {
     printError(s"""Command "$command" is incorrect.""")
   }
 
+  private def validateFilters(xValues: Seq[DimensionEntry], yValues: Seq[DimensionEntry], fixValue: DimensionEntry): Boolean = {
+    Set(xValues.head.tableType.name, yValues.head.tableType.name, fixValue.tableType.name).size == 3
+  }
 
   def main(args: Array[String]) {
 //    System.setProperty("sqlite4java.debug", "true")
@@ -185,13 +188,18 @@ object Console {
 
           command match {
             case "print" =>
-              val filters = Seq(
-                yValues.head.tableType -> DiscreteFilter[DimensionType, DimensionEntry](yValues),
-                xValues.head.tableType -> DiscreteFilter[DimensionType, DimensionEntry](xValues),
-                fixValue.tableType -> DiscreteFilter.singleValue[DimensionType, DimensionEntry](fixValue)
-              )
-              val result = CubeService.getData(filters)
-              printTable(xValues, yValues, result)
+              if (validateFilters(xValues, yValues, fixValue)) {
+                val filters = Seq(
+                  yValues.head.tableType -> DiscreteFilter[DimensionType, DimensionEntry](yValues),
+                  xValues.head.tableType -> DiscreteFilter[DimensionType, DimensionEntry](xValues),
+                  fixValue.tableType -> DiscreteFilter.singleValue[DimensionType, DimensionEntry](fixValue)
+                )
+                val result = CubeService.getData(filters)
+                printTable(xValues, yValues, result)
+              } else {
+                printError("Wrong filters format.")
+                printFilter(xValues, yValues, fixValue)
+              }
             case "showFilter" =>
               printFilter(xValues, yValues, fixValue)
             case "" =>
