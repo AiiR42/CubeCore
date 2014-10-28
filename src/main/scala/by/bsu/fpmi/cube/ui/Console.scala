@@ -140,23 +140,10 @@ object Console {
 
     var fixValue = createEntry("countries", "Country1")
 
-//    val filters = Seq(
-//      DimensionType("shops") -> DiscreteFilter[DimensionType, DimensionEntry](yValues),
-//      DimensionType("apples") -> DiscreteFilter[DimensionType, DimensionEntry](xValues),
-//      DimensionType("countries") -> DiscreteFilter.singleValue[DimensionType, DimensionEntry](fixValue)
-//    )
-
-//    val result = CubeService.getData(filters)//.map { case (entry, value) => entry.map(e => e.entry.data.head._1 + "=" + e.entry.data.head._2) -> value.entry.data.head._2 }.mkString("\n")
-
-//    printTable(xValues, yValues, result)
-//
-//    println(result)
-
     var prevLine = ""
     print(">> ")
 
     for (line <- io.Source.stdin.getLines()) {
-      prevLine = line
       line.split(" ").toList match {
         case command :: subcommand :: params =>
 
