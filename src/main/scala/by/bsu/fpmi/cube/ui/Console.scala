@@ -7,6 +7,7 @@ import by.bsu.fpmi.cube.core.models.filters.DiscreteFilter
 import by.bsu.fpmi.cube.core.models.types.DimensionType
 import by.bsu.fpmi.cube.core.services.CubeService
 
+import scala.util.Try
 import scala.xml.XML
 
 object Console {
@@ -14,7 +15,10 @@ object Console {
   private def dimensionValue(e: TableEntry[_]) = e.entry.data.last._2
   private def factValue(e: TableEntry[_]) = e.entry.data.head._2
 
-  private def printTable(xValues: Seq[DimensionEntry], yValues: Seq[DimensionEntry], result: Map[Seq[DimensionEntry], FactEntry]): Unit = {
+  private def printTable(xValues: Seq[DimensionEntry], yValues: Seq[DimensionEntry], fixValue: DimensionEntry, result: Map[Seq[DimensionEntry], FactEntry]): Unit = {
+    println(s"Fixed type: ${fixValue.tableType.name}")
+    println(s"Fixed value: ${dimensionValue(fixValue)}\n")
+
     val printableXValues = Seq(None) ++ xValues.map(Some(_))
     val printableYValues = Seq(None) ++ yValues.map(Some(_))
 
@@ -52,7 +56,7 @@ object Console {
           }
       }
     }
-    println()
+    print("\n\n")
   }
 
   private def printFilter(xValues: Seq[DimensionEntry], yValues: Seq[DimensionEntry], fixValue: DimensionEntry): Unit = {
@@ -65,7 +69,7 @@ object Console {
   }
 
   private def createEntries(typeName: String, values: List[String]) = {
-    values.map { value =>
+    values.distinct.map { value =>
       new DimensionEntry(DimensionType(typeName), new Entry(Map("name" -> value)))
     }.toSeq
   }
@@ -158,17 +162,31 @@ object Console {
                 case "fixValue" =>
                   fixValue = createEntry(params.head, params.tail.head)
                 case _ =>
-                  printCommandError(line)
+                  printCommandError(subcommand)
+              }
+
+            case "show" =>
+
+              subcommand match {
+                case "dimTypes" =>
+                  println(CubeService.getDimensionTypes.map(_.name).mkString(", "))
+                case "dimValues" =>
+                  println(CubeService.getDimensionValues(DimensionType(params.head)).map(dimensionValue).mkString(", "))
+                case _ =>
+                  printCommandError(subcommand)
               }
 
             case "save" =>
               save(subcommand, xValues, yValues, fixValue)
             case "load" =>
-              val savedInfo = load(subcommand)
-              xValues = savedInfo._1
-              yValues = savedInfo._2
-              fixValue = savedInfo._3
+              Try {
+                val savedInfo = load(subcommand)
+                xValues = savedInfo._1
+                yValues = savedInfo._2
+                fixValue = savedInfo._3
+              }
             case _ =>
+              printCommandError(command)
           }
 
         case command :: _ =>
@@ -183,7 +201,7 @@ object Console {
                 )
                 val result = CubeService.getData(filters)
                 if (result.nonEmpty) {
-                  printTable(xValues, yValues, result)
+                  printTable(xValues, yValues, fixValue, result)
                 } else {
                   printError("Wrong filters value.")
                   printFilter(xValues, yValues, fixValue)

@@ -15,7 +15,9 @@ object CubeService {
     }.getOrElse(Map[Seq[DimensionEntry], FactEntry]())
   }
 
-  def getDimensionValues(tableType: DimensionType): Seq[DimensionEntry] = ???
+  def getDimensionValues(tableType: DimensionType): Seq[DimensionEntry] = {
+    SqlSource.readAll(tableType)
+  }
 
   def getDimensionTypes: Seq[DimensionType] = {
     SqlSource.configuration.dimensions.map(DimensionType)

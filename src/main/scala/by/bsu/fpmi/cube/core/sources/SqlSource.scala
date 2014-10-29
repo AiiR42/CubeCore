@@ -11,9 +11,31 @@ object SqlSource {
 
   lazy val configuration = new Configuration("/Users/andrew/University/Projects/CubeBase/meta.xml")
 
-//  def readAll[T <: TableType](tableType: T): Seq[TableEntry[T]] = {
-//    val tableName = tableType.name
-//  }
+  def readAll(tableType: DimensionType): Seq[DimensionEntry] = {
+    val tableName = tableType.name
+    val selectFields = configuration.dimensions.filter(_ == tableType.name).map { tableName =>
+      configuration.dimensionDataFields(tableName).map { dimensionDataField =>
+        s"$tableName.$dimensionDataField"
+      }
+    }.flatten
+    val statement = s"select ${selectFields.mkString(", ")} from $tableName"
+
+    var result = scala.collection.mutable.Buffer[DimensionEntry]()
+
+    val db = new SQLiteConnection(new File("/Users/andrew/University/Projects/CubeBase/apples"))
+    db.open(true)
+    val st = db.prepare(statement)
+    while (st.step()) {
+      val allValues = selectFields.zipWithIndex.map { case (field, index) =>
+        val value = st.columnValue(index).toString
+        field.split("\\.").last -> value
+      }
+
+      result += DimensionEntry(tableType, Entry(Map(allValues: _*)))
+    }
+
+    result.toSeq
+  }
 
   def readFacts(filters: Seq[(DimensionType, DiscreteFilter[DimensionType, DimensionEntry])]): Map[Seq[DimensionEntry], FactEntry] = {
     // select * from *facts_table_name* left join *dim1* on *dim1*.*dim1key* = *facts_table_name*.*fk* ... where
